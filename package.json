@@ -1,8 +1,8 @@
 {
   "name": "wonderlink-backend",
-  "version": "1.0.0",
-  "main": "index.js",
-  "repository": "git@github.com:dorukozerr/retention-backend.git",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "repository": "git@github.com:dorukozerr/wonderlink-backend.git",
   "author": "Doruk Özer <dorukozer@protonmail.com>",
   "license": "MIT",
   "scripts": {
