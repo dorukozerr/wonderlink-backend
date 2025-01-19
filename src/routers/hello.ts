@@ -30,22 +30,35 @@ export const helloRouter = router({
 
     const table = bq
       .dataset(process.env.BIGQUERY_DATASET_NAME ?? '')
-      .table(tableDetails[1].tableId ?? '');
+      .table(tableDetails[0].tableId ?? '');
 
     const [rows] = await table.getRows();
 
-    const filteredRows = rows
+    const userRecords = rows
       .filter((row) => row.event_name === 'first_open')
       .map((row) => ({
         user_pseudo_id: row.user_pseudo_id,
         install_date: row.event_date,
-        install_timestamp: row.user_properties.filter(
-          (prop: { key: string }) => prop.key === 'first_open_time'
-        )[0].value.int_value,
+        install_timestamp: Math.floor(
+          row.user_properties.filter(
+            (prop: { key: string }) => prop.key === 'first_open_time'
+          )[0].value.int_value
+        ),
         platform: row.platform,
         country: row.geo.country
       }));
 
-    return { len: rows.length, flen: filteredRows.length, filteredRows };
+    const sessionRecords = rows
+      .filter((row) => row.event_name === 'session_start')
+      .map((row) => ({
+        session_id: row.event_params.filter(
+          (param: { key: string }) => param.key === 'ga_session_id'
+        )[0].value.int_value,
+        user_pseudo_id: row.user_pseudo_id,
+        session_date: row.event_date,
+        session_timestamp: row.event_timestamp / 1000
+      }));
+
+    return { userRecords, sessionRecords };
   })
 });
