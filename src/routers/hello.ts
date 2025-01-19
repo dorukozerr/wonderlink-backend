@@ -28,8 +28,24 @@ export const helloRouter = router({
         creationTime: table.metadata.creationTime
       }));
 
-    return {
-      tableDetails
-    };
+    const table = bq
+      .dataset(process.env.BIGQUERY_DATASET_NAME ?? '')
+      .table(tableDetails[1].tableId ?? '');
+
+    const [rows] = await table.getRows();
+
+    const filteredRows = rows
+      .filter((row) => row.event_name === 'first_open')
+      .map((row) => ({
+        user_pseudo_id: row.user_pseudo_id,
+        install_date: row.event_date,
+        install_timestamp: row.user_properties.filter(
+          (prop: { key: string }) => prop.key === 'first_open_time'
+        )[0].value.int_value,
+        platform: row.platform,
+        country: row.geo.country
+      }));
+
+    return { len: rows.length, flen: filteredRows.length, filteredRows };
   })
 });
