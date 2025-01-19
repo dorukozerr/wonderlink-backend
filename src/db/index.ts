@@ -14,7 +14,7 @@ if (
   !BIGQUERY_CREDENTIALS_JSON ||
   !POSTGRESQL_DATABASE_URL
 ) {
-  throw new Error('Missing env vars');
+  throw new Error('Missing env vars detected');
 }
 
 const bq = new BigQuery({

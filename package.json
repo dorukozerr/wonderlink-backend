@@ -11,7 +11,7 @@
     "start": "node dist/index.js",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
-    "migrate": "npx tsx scripts/migrate.ts",
+    "migrate": "npx drizzle-kit generate && npx tsx scripts/migrate.ts",
     "process-bq-data": "npx tsx scripts/process_bq_data.ts"
   },
   "dependencies": {

@@ -9,7 +9,7 @@ import { BigQuery } from '@google-cloud/bigquery';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
-import { users, sessions } from '../src/db';
+import { users, sessions } from '../src/db/schemas';
 
 const BIGQUERY_PROJECT_ID = process.env.BIGQUERY_PROJECT_ID;
 const BIGQUERY_CREDENTIALS_JSON = process.env.BIGQUERY_CREDENTIALS_JSON;
