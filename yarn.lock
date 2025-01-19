@@ -11,12 +11,12 @@
 
 "@drizzle-team/brocli@^0.10.2":
   version "0.10.2"
-  resolved "https://registry.npmjs.org/@drizzle-team/brocli/-/brocli-0.10.2.tgz"
+  resolved "https://registry.yarnpkg.com/@drizzle-team/brocli/-/brocli-0.10.2.tgz#9757c006a43daaa6f45512e6cf5fabed36fb9da7"
   integrity sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==
 
 "@esbuild-kit/core-utils@^3.3.2":
   version "3.3.2"
-  resolved "https://registry.npmjs.org/@esbuild-kit/core-utils/-/core-utils-3.3.2.tgz"
+  resolved "https://registry.yarnpkg.com/@esbuild-kit/core-utils/-/core-utils-3.3.2.tgz#186b6598a5066f0413471d7c4d45828e399ba96c"
   integrity sha512-sPRAnw9CdSsRmEtnsl2WXWdyquogVpB3yZ3dgwJfe8zrOzTsV7cJvmwrKVa+0ma5BoiGJ+BoqkMvawbayKUsqQ==
   dependencies:
     esbuild "~0.18.20"
@@ -24,7 +24,7 @@
 
 "@esbuild-kit/esm-loader@^2.5.5":
   version "2.6.5"
-  resolved "https://registry.npmjs.org/@esbuild-kit/esm-loader/-/esm-loader-2.6.5.tgz"
+  resolved "https://registry.yarnpkg.com/@esbuild-kit/esm-loader/-/esm-loader-2.6.5.tgz#6eedee46095d7d13b1efc381e2211ed1c60e64ea"
   integrity sha512-FxEMIkJKnodyA1OaCUoEvbYRkoZlLZ4d/eXFu9Fh8CbBBgP5EmZxrfTRyN0qpXZ4vOvqnE5YdRdcrmUUXuU+dA==
   dependencies:
     "@esbuild-kit/core-utils" "^3.3.2"
@@ -67,12 +67,12 @@
 
 "@esbuild/darwin-arm64@0.18.20":
   version "0.18.20"
-  resolved "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.18.20.tgz"
+  resolved "https://registry.yarnpkg.com/@esbuild/darwin-arm64/-/darwin-arm64-0.18.20.tgz#08172cbeccf95fbc383399a7f39cfbddaeb0d7c1"
   integrity sha512-bxRHW5kHU38zS2lPTPOyuyTm+S+eobPUnTNkdJEfAddYgEcll4xkT8DB9d2008DtTbl7uJag2HuE5NZAZgnNEA==
 
 "@esbuild/darwin-arm64@0.19.12":
   version "0.19.12"
-  resolved "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.19.12.tgz"
+  resolved "https://registry.yarnpkg.com/@esbuild/darwin-arm64/-/darwin-arm64-0.19.12.tgz#cbee41e988020d4b516e9d9e44dd29200996275e"
   integrity sha512-B6IeSgZgtEzGC42jsI+YYu9Z3HKRxp8ZT3cqhvliEHovq8HSX2YX8lNocDn79gCKJXOSaEot9MVYky7AKjCs8g==
 
 "@esbuild/darwin-x64@0.18.20":
@@ -542,7 +542,7 @@
 
 "@types/pg@^8.11.10":
   version "8.11.10"
-  resolved "https://registry.npmjs.org/@types/pg/-/pg-8.11.10.tgz"
+  resolved "https://registry.yarnpkg.com/@types/pg/-/pg-8.11.10.tgz#b8fb2b2b759d452fe3ec182beadd382563b63291"
   integrity sha512-LczQUW4dbOQzsH2RQ5qoeJ6qJPdrcM/DcMLoqWQkMLMsq83J5lAX3LXjdkWdpscFy67JSOWDnh7Ny/sPFykmkg==
   dependencies:
     "@types/node" "*"
@@ -908,7 +908,7 @@ dotenv@^16.4.7:
 
 drizzle-kit@^0.30.2:
   version "0.30.2"
-  resolved "https://registry.npmjs.org/drizzle-kit/-/drizzle-kit-0.30.2.tgz"
+  resolved "https://registry.yarnpkg.com/drizzle-kit/-/drizzle-kit-0.30.2.tgz#3cca5e9d289aed260f92d8cbf842552f53eff5c5"
   integrity sha512-vhdLrxWA32WNVF77NabpSnX7pQBornx64VDQDmKddRonOB2Xe/yY4glQ7rECoa+ogqcQNo7VblLUbeBK6Zn9Ow==
   dependencies:
     "@drizzle-team/brocli" "^0.10.2"
@@ -918,7 +918,7 @@ drizzle-kit@^0.30.2:
 
 drizzle-orm@^0.38.4:
   version "0.38.4"
-  resolved "https://registry.npmjs.org/drizzle-orm/-/drizzle-orm-0.38.4.tgz"
+  resolved "https://registry.yarnpkg.com/drizzle-orm/-/drizzle-orm-0.38.4.tgz#5c2eaf8f2ea506e626ecd1971bb2751c113b3ec7"
   integrity sha512-s7/5BpLKO+WJRHspvpqTydxFob8i1vo2rEx4pY6TGY7QSMuUfWUuzaY0DIpXCkgHOo37BaFC+SJQb99dDUXT3Q==
 
 duplexify@^4.0.0, duplexify@^4.1.1:
@@ -954,14 +954,14 @@ end-of-stream@^1.4.1:
 
 esbuild-register@^3.5.0:
   version "3.6.0"
-  resolved "https://registry.npmjs.org/esbuild-register/-/esbuild-register-3.6.0.tgz"
+  resolved "https://registry.yarnpkg.com/esbuild-register/-/esbuild-register-3.6.0.tgz#cf270cfa677baebbc0010ac024b823cbf723a36d"
   integrity sha512-H2/S7Pm8a9CL1uhp9OvjwrBh5Pvx0H8qVOxNu8Wed9Y7qv56MPtq+GGM8RJpq6glYJn9Wspr8uw7l55uyinNeg==
   dependencies:
     debug "^4.3.4"
 
 esbuild@^0.19.7:
   version "0.19.12"
-  resolved "https://registry.npmjs.org/esbuild/-/esbuild-0.19.12.tgz"
+  resolved "https://registry.yarnpkg.com/esbuild/-/esbuild-0.19.12.tgz#dc82ee5dc79e82f5a5c3b4323a2a641827db3e04"
   integrity sha512-aARqgq8roFBj054KvQr5f1sFu0D65G+miZRCuJyJ0G13Zwx7vRar5Zhn2tkQNzIXcBrNVsv/8stehpj+GAjgbg==
   optionalDependencies:
     "@esbuild/aix-ppc64" "0.19.12"
@@ -990,7 +990,7 @@ esbuild@^0.19.7:
 
 esbuild@~0.18.20:
   version "0.18.20"
-  resolved "https://registry.npmjs.org/esbuild/-/esbuild-0.18.20.tgz"
+  resolved "https://registry.yarnpkg.com/esbuild/-/esbuild-0.18.20.tgz#4709f5a34801b43b799ab7d6d82f7284a9b7a7a6"
   integrity sha512-ceqxoedUrcayh7Y7ZX6NdbbDzGROiyVBgC4PriJThBKSVPWnnFHZAkfI1lJT8QFkOwH4qOS2SJkS4wvpGl8BpA==
   optionalDependencies:
     "@esbuild/android-arm" "0.18.20"
@@ -1249,7 +1249,7 @@ gcp-metadata@^6.1.0:
 
 get-tsconfig@^4.7.0:
   version "4.8.1"
-  resolved "https://registry.npmjs.org/get-tsconfig/-/get-tsconfig-4.8.1.tgz"
+  resolved "https://registry.yarnpkg.com/get-tsconfig/-/get-tsconfig-4.8.1.tgz#8995eb391ae6e1638d251118c7b56de7eb425471"
   integrity sha512-k9PN+cFBmaLWtVz29SkUoqU5O0slLuHJXt/2P+tMVFT+phsSGXGkp9t3rQIqdz0e+06EHNGs3oM6ZX1s2zHxRg==
   dependencies:
     resolve-pkg-maps "^1.0.0"
@@ -1704,7 +1704,7 @@ pg-types@^4.0.1:
 
 pg@^8.13.1:
   version "8.13.1"
-  resolved "https://registry.npmjs.org/pg/-/pg-8.13.1.tgz"
+  resolved "https://registry.yarnpkg.com/pg/-/pg-8.13.1.tgz#6498d8b0a87ff76c2df7a32160309d3168c0c080"
   integrity sha512-OUir1A0rPNZlX//c7ksiu7crsGZTKSOXJPgtNiHGIlC9H0lO+NC6ZDYksSgBYY/thSWhnSRBv8w1lieNNGATNQ==
   dependencies:
     pg-connection-string "^2.7.0"
@@ -1826,7 +1826,7 @@ resolve-from@^4.0.0:
 
 resolve-pkg-maps@^1.0.0:
   version "1.0.0"
-  resolved "https://registry.npmjs.org/resolve-pkg-maps/-/resolve-pkg-maps-1.0.0.tgz"
+  resolved "https://registry.yarnpkg.com/resolve-pkg-maps/-/resolve-pkg-maps-1.0.0.tgz#616b3dc2c57056b5588c31cdf4b3d64db133720f"
   integrity sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==
 
 resolve@^1.0.0:
