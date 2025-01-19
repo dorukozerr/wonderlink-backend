@@ -51,9 +51,11 @@ export const helloRouter = router({
     const sessionRecords = rows
       .filter((row) => row.event_name === 'session_start')
       .map((row) => ({
-        session_id: row.event_params.filter(
-          (param: { key: string }) => param.key === 'ga_session_id'
-        )[0].value.int_value,
+        session_id: String(
+          row.event_params.filter(
+            (param: { key: string }) => param.key === 'ga_session_id'
+          )[0].value.int_value
+        ),
         user_pseudo_id: row.user_pseudo_id,
         session_date: row.event_date,
         session_timestamp: row.event_timestamp / 1000

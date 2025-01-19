@@ -5,8 +5,7 @@ import { Pool } from 'pg';
 const pool = new Pool({
   host: 'localhost',
   port: 5432,
-  database: 'wonderlink',
-  user: process.env.USER
+  database: 'wonderlink'
 });
 
 const main = async () => {
