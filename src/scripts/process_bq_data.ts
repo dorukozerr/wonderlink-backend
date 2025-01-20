@@ -102,6 +102,8 @@ const process_bq_data = async () => {
 
       const maxResults = 500;
 
+      let sessionEvents = [];
+
       do {
         const [rows, metadata] = await table.getRows({
           pageToken: userPageToken,
@@ -121,6 +123,25 @@ const process_bq_data = async () => {
             platform: row.platform,
             country: row.geo.country
           }));
+
+        sessionEvents.push(
+          ...rows
+            .filter((row) => row.event_name === 'session_start')
+            .map((row) => ({
+              session_id: row.event_params
+                ? String(
+                    row.event_params.filter(
+                      (param: { key: string }) => param.key === 'ga_session_id'
+                    )[0].value.int_value
+                  )
+                : null,
+              user_pseudo_id: row.user_pseudo_id,
+              session_date: row.event_date,
+              session_timestamp: row.event_timestamp,
+              country: row.geo.country,
+              platform: row.platform
+            }))
+        );
 
         if (userRecords.length > 0) {
           for (const user of userRecords) {
@@ -159,121 +180,92 @@ const process_bq_data = async () => {
           : undefined;
       } while (userPageToken);
 
-      do {
-        const [rows, metadata] = await table.getRows({
-          pageToken: sessionPageToken,
-          maxResults
-        });
+      if (sessionEvents.length > 0) {
+        for (const session of sessionEvents) {
+          if (!session.session_id) {
+            logProcessing(
+              'session id is null for this session reecord moving on',
+              'error'
+            );
+            continue;
+          }
 
-        const sessionRecords = rows
-          .filter((row) => row.event_name === 'session_start')
-          .map((row) => ({
-            session_id: row.event_params
-              ? String(
-                  row.event_params.filter(
-                    (param: { key: string }) => param.key === 'ga_session_id'
-                  )[0].value.int_value
-                )
-              : null,
-            user_pseudo_id: row.user_pseudo_id,
-            session_date: row.event_date,
-            session_timestamp: row.event_timestamp,
-            country: row.geo.country,
-            platform: row.platform
-          }));
+          const matchedSessionRecord = await db
+            .select()
+            .from(sessions)
+            .where(eq(sessions.session_id, session.session_id));
 
-        if (sessionRecords.length > 0) {
-          for (const session of sessionRecords) {
-            if (!session.session_id) {
+          const userRecord = await db
+            .select()
+            .from(users)
+            .where(eq(users.user_pseudo_id, session.user_pseudo_id));
+
+          if (userRecord.length === 0) {
+            logProcessing(
+              `=> user - ${session.user_pseudo_id} does not exist in users table but has a session record skipping the insert operation for this session record`,
+              'error'
+            );
+            continue;
+          }
+
+          if (matchedSessionRecord.length === 0) {
+            const sessionInsertData = {
+              session_id: session.session_id,
+              user_pseudo_id: session.user_pseudo_id,
+              session_date: session.session_date,
+              session_timestamp: session.session_timestamp
+            };
+
+            await db.insert(sessions).values(sessionInsertData);
+
+            logProcessing(
+              `=> session - ${session.session_id} inserted successfully`,
+              'success'
+            );
+
+            const user = userRecord[0];
+            const updates: { platform?: string; country?: string } = {};
+
+            if (session.platform !== user.platform) {
               logProcessing(
-                'session id is null for this session reecord moving on',
-                'error'
+                `=> platform mismatch detected for user ${session.user_pseudo_id}. Old: ${user.platform}, New: ${session.platform}`,
+                'warning'
               );
-              continue;
+              updates.platform = session.platform;
             }
 
-            const matchedSessionRecord = await db
-              .select()
-              .from(sessions)
-              .where(eq(sessions.session_id, session.session_id));
-
-            const userRecord = await db
-              .select()
-              .from(users)
-              .where(eq(users.user_pseudo_id, session.user_pseudo_id));
-
-            if (userRecord.length === 0) {
+            if (session.country !== user.country) {
               logProcessing(
-                `=> user - ${session.user_pseudo_id} does not exist in users table but has a session record skipping the insert operation for this session record`,
-                'error'
+                `=> country mismatch detected for user ${session.user_pseudo_id}. Old: ${user.country}, New: ${session.country}`,
+                'warning'
               );
-              continue;
+              updates.country = session.country;
             }
 
-            if (matchedSessionRecord.length === 0) {
-              const sessionInsertData = {
-                session_id: session.session_id,
-                user_pseudo_id: session.user_pseudo_id,
-                session_date: session.session_date,
-                session_timestamp: session.session_timestamp
-              };
-
-              await db.insert(sessions).values(sessionInsertData);
+            if (Object.keys(updates).length > 0) {
+              await db
+                .update(users)
+                .set(updates)
+                .where(eq(users.user_pseudo_id, session.user_pseudo_id));
 
               logProcessing(
-                `=> session - ${session.session_id} inserted successfully`,
+                `=> user ${session.user_pseudo_id} record updated with new platform/country`,
                 'success'
               );
-
-              const user = userRecord[0];
-              const updates: { platform?: string; country?: string } = {};
-
-              if (session.platform !== user.platform) {
-                logProcessing(
-                  `=> platform mismatch detected for user ${session.user_pseudo_id}. Old: ${user.platform}, New: ${session.platform}`,
-                  'warning'
-                );
-                updates.platform = session.platform;
-              }
-
-              if (session.country !== user.country) {
-                logProcessing(
-                  `=> country mismatch detected for user ${session.user_pseudo_id}. Old: ${user.country}, New: ${session.country}`,
-                  'warning'
-                );
-                updates.country = session.country;
-              }
-
-              if (Object.keys(updates).length > 0) {
-                await db
-                  .update(users)
-                  .set(updates)
-                  .where(eq(users.user_pseudo_id, session.user_pseudo_id));
-
-                logProcessing(
-                  `=> user ${session.user_pseudo_id} record updated with new platform/country`,
-                  'success'
-                );
-              }
-            } else {
-              logProcessing(
-                `=> session - ${session.session_id} exists in database`,
-                'error'
-              );
             }
+          } else {
+            logProcessing(
+              `=> session - ${session.session_id} exists in database`,
+              'error'
+            );
           }
         }
-
-        sessionPageToken = metadata
-          ? metadata.pageToken
-            ? metadata.pageToken
-            : undefined
-          : undefined;
-      } while (sessionPageToken);
+      }
     };
 
     for (const { tableId } of filteredTables) {
       const beforeMem = process.memoryUsage().heapUsed / 1024 / 1024;
+
       logProcessing(
         `Memory usage before GC: ${beforeMem.toFixed(2)} MB`,
         'debug'
@@ -282,6 +274,7 @@ const process_bq_data = async () => {
       if (gc) gc();
 
       const afterMem = process.memoryUsage().heapUsed / 1024 / 1024;
+
       logProcessing(
         `Memory usage after GC: ${afterMem.toFixed(2)} MB`,
         'debug'
