@@ -94,7 +94,7 @@ const process_bq_data = async () => {
       'success'
     );
 
-    let loopIndex = 1;
+    let loopIndex = 0;
 
     const processTableData = async (table: Table) => {
       let userPageToken: string | undefined;
@@ -334,10 +334,11 @@ const process_bq_data = async () => {
         'debug'
       );
     }
+
+    logProcessing('Sucessfully processed all data', 'success');
   } catch (error) {
     logProcessing(`=> process_bq_data error => ${error}`, 'error');
   } finally {
-    logProcessing('Sucessfully processed all data', 'success');
     logFile.end();
   }
 };
