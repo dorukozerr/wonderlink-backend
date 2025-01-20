@@ -4,8 +4,9 @@ config();
 
 import { join } from 'path';
 import { homedir } from 'os';
-import { writeFileSync } from 'fs';
+import { writeFile } from 'fs';
 
+import { eq } from 'drizzle-orm';
 import { BigQuery } from '@google-cloud/bigquery';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
@@ -14,23 +15,25 @@ import { users, sessions } from '../src/db/schemas';
 
 const BIGQUERY_PROJECT_ID = process.env.BIGQUERY_PROJECT_ID;
 const BIGQUERY_CREDENTIALS_JSON = process.env.BIGQUERY_CREDENTIALS_JSON;
+const BIGQUERY_DATASET_NAME = process.env.BIGQUERY_DATASET_NAME;
 const POSTGRESQL_DATABASE_URL = process.env.POSTGRESQL_DATABASE_URL;
 
 if (
   !BIGQUERY_PROJECT_ID ||
   !BIGQUERY_CREDENTIALS_JSON ||
+  !BIGQUERY_DATASET_NAME ||
   !POSTGRESQL_DATABASE_URL
 ) {
   throw new Error('Missing env vars');
 }
 
 const bq = new BigQuery({
-  projectId: process.env.BIGQUERY_PROJECT_ID,
+  projectId: BIGQUERY_PROJECT_ID,
   keyFilename: join(homedir(), BIGQUERY_CREDENTIALS_JSON)
 });
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
+  connectionString: POSTGRESQL_DATABASE_URL
 });
 
 const db = drizzle(pool);
@@ -56,9 +59,9 @@ const logStyles = {
 
 let logOutput = 'Wonderlink BigQuery data processing\n';
 
-const logOperation = (log: string, type: LogType = 'info') => {
+const logProcessing = (log: string, type: LogType = 'info') => {
   const timestamp = new Date().toISOString();
-  const coloredLog = `${logStyles[type]}[${type.toUpperCase()}] => ${log}${ConsoleColors.Reset}`;
+  const coloredLog = `${logStyles[type]}[${type.toUpperCase()}] ${log}${ConsoleColors.Reset}`;
   const plainLog = `[${timestamp}] [${type.toUpperCase()}] ${log}\n`;
 
   logOutput += plainLog;
@@ -68,18 +71,16 @@ const logOperation = (log: string, type: LogType = 'info') => {
 
 const process_bq_data = async () => {
   try {
-    logOperation('=> process_bq_data script invoked');
-    logOperation('=> starting to fetching all available tables');
+    logProcessing('=> process_bq_data script invoked');
+    logProcessing('=> starting to fetching all available tables');
 
-    const [tables] = await bq
-      .dataset(process.env.BIGQUERY_DATASET_NAME ?? '')
-      .getTables();
+    const [tables] = await bq.dataset(BIGQUERY_DATASET_NAME).getTables();
 
-    logOperation(
+    logProcessing(
       `=> all available tables fetched, total table count ${tables.length}`,
       'success'
     );
-    logOperation('=> starting to filtering tables');
+    logProcessing('=> starting to filtering tables');
 
     const filteredTables = tables
       .filter(
@@ -87,39 +88,37 @@ const process_bq_data = async () => {
       )
       .map((table) => ({ tableId: table.id }));
 
-    logOperation(
+    logProcessing(
       `=> tables are filtered, total count of event tables ${filteredTables.length}`,
       'success'
     );
 
-    for (const { tableId } of filteredTables.slice(0, 5)) {
-      logOperation(`starting to fetching all data of table => ${tableId}`);
+    for (const { tableId } of filteredTables.slice(0, 2)) {
+      logProcessing(`=> starting to fetching all data of table => ${tableId}`);
 
       if (!tableId) {
-        logOperation('tableId is missing from table record', 'error');
+        logProcessing('=> tableId is missing from table record', 'error');
 
         return;
       }
 
-      const table = bq
-        .dataset(process.env.BIGQUERY_DATASET_NAME ?? '')
-        .table(tableId);
+      const table = bq.dataset(BIGQUERY_DATASET_NAME).table(tableId);
 
       const [rows] = await table.getRows();
 
-      logOperation(`=> table => ${tableId} data fetched`, 'success');
-      logOperation(`starting to filtering events data of table => ${tableId}`);
+      logProcessing(`=> table => ${tableId} data fetched`, 'success');
+      logProcessing(
+        `=> starting to filtering events data of table => ${tableId}`
+      );
 
       const userRecords = rows
         .filter((row) => row.event_name === 'first_open')
         .map((row) => ({
           user_pseudo_id: row.user_pseudo_id,
           install_date: row.event_date,
-          install_timestamp: Math.floor(
-            row.user_properties.filter(
-              (prop: { key: string }) => prop.key === 'first_open_time'
-            )[0].value.int_value
-          ),
+          install_timestamp: row.user_properties.filter(
+            (prop: { key: string }) => prop.key === 'first_open_time'
+          )[0].value.int_value,
           platform: row.platform,
           country: row.geo.country
         }));
@@ -134,20 +133,146 @@ const process_bq_data = async () => {
           ),
           user_pseudo_id: row.user_pseudo_id,
           session_date: row.event_date,
-          session_timestamp: row.event_timestamp / 1000
+          session_timestamp: row.event_timestamp,
+          country: row.geo.country,
+          platform: row.platform
         }));
 
-      logOperation(
-        `table => ${tableId} data filtered, extracted user records ${userRecords.length}, extracted sessionRecords ${sessionRecords.length}`,
+      logProcessing(
+        `=> table => ${tableId} data filtered, extracted user records ${userRecords.length}, extracted sessionRecords ${sessionRecords.length}`,
         'success'
       );
+      logProcessing('=> starting db operations on filtered user records');
+
+      for (const user of userRecords) {
+        const matchedUserRecorcds = await db
+          .select()
+          .from(users)
+          .where(eq(users.user_pseudo_id, user.user_pseudo_id));
+
+        if (matchedUserRecorcds.length === 0) {
+          logProcessing(
+            `=> starting the insert operation for user - ${user.user_pseudo_id}`
+          );
+
+          await db.insert(users).values(user);
+
+          logProcessing(
+            `=> user - ${user.user_pseudo_id} inserted to database`,
+            'success'
+          );
+        } else {
+          logProcessing(
+            `=> user - ${user.user_pseudo_id} exists in database, moving on to next user`,
+            'error'
+          );
+        }
+      }
+
+      for (const session of sessionRecords) {
+        const matchedSessionRecord = await db
+          .select()
+          .from(sessions)
+          .where(eq(sessions.session_id, session.session_id));
+
+        const userRecord = await db
+          .select()
+          .from(users)
+          .where(eq(users.user_pseudo_id, session.user_pseudo_id));
+
+        if (userRecord.length === 0) {
+          logProcessing(
+            `=> user - ${session.user_pseudo_id} does not exists in users table but has a session record skipping the insert operation for this session record`,
+            'error'
+          );
+        } else {
+          if (matchedSessionRecord.length === 0) {
+            logProcessing(
+              `=> inserting session - ${session.session_id} into database`
+            );
+
+            const sessionInsertData = {
+              session_id: session.session_id,
+              user_pseudo_id: session.user_pseudo_id,
+              session_date: session.session_date,
+              session_timestamp: session.session_timestamp
+            };
+
+            await db.insert(sessions).values(sessionInsertData);
+
+            logProcessing(
+              `=> session - ${session.session_id} inserted succesfully`,
+              'success'
+            );
+            logProcessing('checking for data mismatch in user record');
+
+            if (userRecord.length > 0) {
+              const user = userRecord[0];
+              const updates: { platform?: string; country?: string } = {};
+
+              if (session.platform !== user.platform) {
+                logProcessing(
+                  `=> platform mismatch detected for user ${session.user_pseudo_id}. Old: ${user.platform}, New: ${session.platform}`,
+                  'warning'
+                );
+                updates.platform = session.platform;
+              }
+
+              if (session.country !== user.country) {
+                logProcessing(
+                  `=> country mismatch detected for user ${session.user_pseudo_id}. Old: ${user.country}, New: ${session.country}`,
+                  'warning'
+                );
+                updates.country = session.country;
+              }
+
+              if (Object.keys(updates).length > 0) {
+                await db
+                  .update(users)
+                  .set(updates)
+                  .where(eq(users.user_pseudo_id, session.user_pseudo_id));
+
+                logProcessing(
+                  `=> user ${session.user_pseudo_id} record updated with new platform/country`,
+                  'success'
+                );
+              } else {
+                logProcessing(
+                  `=> user ${session.user_pseudo_id} has no mismatch`,
+                  'success'
+                );
+              }
+            } else {
+              logProcessing(
+                `=> user ${session.user_pseudo_id} not found in database, skipping the insert operation of this session`,
+                'error'
+              );
+            }
+          } else {
+            // This should never happen but added this check in any case, might add a
+            // logic to generate a new session id and insert with it later
+            logProcessing(
+              `=> session - ${session.session_id} exists in database`,
+              'error'
+            );
+          }
+        }
+      }
     }
   } catch (error) {
-    logOperation(`process_bq_data error => ${error}`, 'error');
+    logProcessing(`=> process_bq_data error => ${error}`, 'error');
   } finally {
-    writeFileSync(
-      `process_bq_data_script_logs_${new Date().toISOString()}`,
-      logOutput
+    writeFile(
+      `process_bq_data_script_logs_${new Date().toISOString()}.txt`,
+      logOutput,
+      (err) => {
+        if (err) throw err;
+
+        logProcessing(
+          `=> logs saved to file process_bq_data_script_logs_${new Date().toISOString()}.txt`,
+          'success'
+        );
+      }
     );
   }
 };
