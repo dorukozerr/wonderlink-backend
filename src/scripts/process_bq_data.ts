@@ -4,14 +4,14 @@ config();
 
 import { join } from 'path';
 import { homedir } from 'os';
-import { writeFile } from 'fs';
+import { createWriteStream } from 'fs';
 
 import { eq } from 'drizzle-orm';
 import { BigQuery } from '@google-cloud/bigquery';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
-import { users, sessions } from '../src/db/schemas';
+import { users, sessions } from '../db/schemas';
 
 const BIGQUERY_PROJECT_ID = process.env.BIGQUERY_PROJECT_ID;
 const BIGQUERY_CREDENTIALS_JSON = process.env.BIGQUERY_CREDENTIALS_JSON;
@@ -47,6 +47,11 @@ const ConsoleColors = {
   Magenta: '\x1b[35m'
 } as const;
 
+const logFile = createWriteStream(
+  `process_bq_data_script_logs_${new Date().toISOString()}.txt`,
+  { flags: 'a' }
+);
+
 type LogType = 'info' | 'success' | 'warning' | 'error' | 'debug';
 
 const logStyles = {
@@ -57,15 +62,12 @@ const logStyles = {
   debug: ConsoleColors.Magenta
 };
 
-let logOutput = 'Wonderlink BigQuery data processing\n';
-
 const logProcessing = (log: string, type: LogType = 'info') => {
   const timestamp = new Date().toISOString();
   const coloredLog = `${logStyles[type]}[${type.toUpperCase()}] ${log}${ConsoleColors.Reset}`;
   const plainLog = `[${timestamp}] [${type.toUpperCase()}] ${log}\n`;
 
-  logOutput += plainLog;
-
+  logFile.write(plainLog);
   console.log(coloredLog);
 };
 
@@ -93,8 +95,28 @@ const process_bq_data = async () => {
       'success'
     );
 
+    let loopIndex = 1;
+
     for (const { tableId } of filteredTables) {
-      logProcessing(`=> starting to fetching all data of table => ${tableId}`);
+      const beforeMem = process.memoryUsage().heapUsed / 1024 / 1024;
+      logProcessing(
+        `Memory usage before GC: ${beforeMem.toFixed(2)} MB`,
+        'debug'
+      );
+
+      if (gc) gc();
+
+      const afterMem = process.memoryUsage().heapUsed / 1024 / 1024;
+      logProcessing(
+        `Memory usage after GC: ${afterMem.toFixed(2)} MB`,
+        'debug'
+      );
+
+      logProcessing(
+        `=> starting to fetching all data of table => ${tableId} ${loopIndex}/${filteredTables.length}`
+      );
+
+      loopIndex += 1;
 
       if (!tableId) {
         logProcessing('=> tableId is missing from table record', 'error');
@@ -104,7 +126,10 @@ const process_bq_data = async () => {
 
       const table = bq.dataset(BIGQUERY_DATASET_NAME).table(tableId);
 
-      const [rows] = await table.getRows();
+      const [rows] = await table.getRows({
+        selectedFields:
+          'event_name,user_pseudo_id,user_properties,event_date,platform,geo,event_params,event_date,event_timestamp'
+      });
 
       logProcessing(`=> table => ${tableId} data fetched`, 'success');
       logProcessing(
@@ -257,23 +282,17 @@ const process_bq_data = async () => {
             );
           }
         }
+
+        logProcessing(
+          `user records - ${userRecords.length}, session records - ${sessionRecords.length}`,
+          'debug'
+        );
       }
     }
   } catch (error) {
     logProcessing(`=> process_bq_data error => ${error}`, 'error');
   } finally {
-    writeFile(
-      `process_bq_data_script_logs_${new Date().toISOString()}.txt`,
-      logOutput,
-      (err) => {
-        if (err) throw err;
-
-        logProcessing(
-          `=> logs saved to file process_bq_data_script_logs_${new Date().toISOString()}.txt`,
-          'success'
-        );
-      }
-    );
+    logFile.end();
   }
 };
 
