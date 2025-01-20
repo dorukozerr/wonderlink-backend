@@ -108,6 +108,11 @@ const process_bq_data = async () => {
           maxResults
         });
 
+        logProcessing(
+          `=> table id - ${tableId}, rows fetched - ${rows.length}, batch size - ${maxResults}`,
+          'debug'
+        );
+
         processedRows += rows.length;
 
         const userRecords = rows
