@@ -4,6 +4,7 @@ config();
 
 import { join } from 'path';
 import { homedir } from 'os';
+import { writeFileSync } from 'fs';
 
 import { BigQuery } from '@google-cloud/bigquery';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -34,12 +35,103 @@ const pool = new Pool({
 
 const db = drizzle(pool);
 
+const ConsoleColors = {
+  Reset: '\x1b[0m',
+  Blue: '\x1b[34m',
+  Green: '\x1b[32m',
+  Yellow: '\x1b[33m',
+  Red: '\x1b[31m',
+  Magenta: '\x1b[35m'
+} as const;
+
+type LogType = 'info' | 'success' | 'warning' | 'error' | 'debug';
+
+const logStyles = {
+  info: ConsoleColors.Blue,
+  success: ConsoleColors.Green,
+  warning: ConsoleColors.Yellow,
+  error: ConsoleColors.Red,
+  debug: ConsoleColors.Magenta
+};
+
+let logOutput = 'Wonderlink BigQuery data processing logs';
+
+const logOperation = (log: string, type: LogType = 'info') => {
+  const timestamp = new Date().toISOString();
+  const coloredLog = `${logStyles[type]}[${type.toUpperCase()}] ${log}${ConsoleColors.Reset}`;
+  const plainLog = `[${timestamp}] [${type.toUpperCase()}] ${log}\n`;
+
+  logOutput += plainLog;
+
+  console.log(coloredLog);
+};
+
 const process_bq_data = async () => {
-  console.log({
-    BIGQUERY_PROJECT_ID,
-    BIGQUERY_CREDENTIALS_JSON,
-    POSTGRESQL_DATABASE_URL
-  });
+  try {
+    logOperation('=> process_bq_data script invoked');
+    logOperation('=> starting to fetching all available tables');
+
+    const [tables] = await bq
+      .dataset(process.env.BIGQUERY_DATASET_NAME ?? '')
+      .getTables();
+
+    logOperation(
+      `=> all available tables fetched, total table count ${tables.length}`
+    );
+    logOperation('=> starting to filtering tables');
+
+    const filteredTables = tables
+      .filter(
+        (table) => table.id?.startsWith('events') && table.id?.length === 15
+      )
+      .map((table) => ({ tableId: table.id }));
+
+    logOperation(
+      `=> tables are filtered, total count of event tables ${filteredTables.length}`
+    );
+
+    throw new Error('test');
+
+    //  const table = bq
+    //    .dataset(process.env.BIGQUERY_DATASET_NAME ?? '')
+    //    .table(filteredTables[0].tableId ?? '');
+
+    //  const [rows] = await table.getRows();
+
+    //  const userRecords = rows
+    //    .filter((row) => row.event_name === 'first_open')
+    //    .map((row) => ({
+    //      user_pseudo_id: row.user_pseudo_id,
+    //      install_date: row.event_date,
+    //      install_timestamp: Math.floor(
+    //        row.user_properties.filter(
+    //          (prop: { key: string }) => prop.key === 'first_open_time'
+    //        )[0].value.int_value
+    //      ),
+    //      platform: row.platform,
+    //      country: row.geo.country
+    //    }));
+
+    //  const sessionRecords = rows
+    //    .filter((row) => row.event_name === 'session_start')
+    //    .map((row) => ({
+    //      session_id: String(
+    //        row.event_params.filter(
+    //          (param: { key: string }) => param.key === 'ga_session_id'
+    //        )[0].value.int_value
+    //      ),
+    //      user_pseudo_id: row.user_pseudo_id,
+    //      session_date: row.event_date,
+    //      session_timestamp: row.event_timestamp / 1000
+    //    }));
+  } catch (error) {
+    logOperation(`process_bq_data error => ${error}`, 'error');
+  } finally {
+    writeFileSync(
+      `process_bq_data_script_logs_${new Date().toISOString()}`,
+      logOutput
+    );
+  }
 };
 
 process_bq_data();
