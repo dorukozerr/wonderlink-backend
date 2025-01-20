@@ -98,11 +98,10 @@ const process_bq_data = async () => {
 
     const processTableData = async (table: Table) => {
       let userPageToken: string | undefined;
-      let sessionPageToken: string | undefined;
 
       const maxResults = 500;
 
-      let sessionEvents = [];
+      const sessionEvents = [];
 
       do {
         const [rows, metadata] = await table.getRows({
@@ -118,7 +117,11 @@ const process_bq_data = async () => {
             install_timestamp: row.user_properties
               ? row.user_properties.filter(
                   (prop: { key: string }) => prop.key === 'first_open_time'
-                )[0].value.int_value
+                )[0]?.value
+                ? row.user_properties.filter(
+                    (prop: { key: string }) => prop.key === 'first_open_time'
+                  )[0].value?.int_value
+                : null
               : null,
             platform: row.platform,
             country: row.geo.country
@@ -132,7 +135,12 @@ const process_bq_data = async () => {
                 ? String(
                     row.event_params.filter(
                       (param: { key: string }) => param.key === 'ga_session_id'
-                    )[0].value.int_value
+                    )[0]?.value
+                      ? row.event_params.filter(
+                          (param: { key: string }) =>
+                            param.key === 'ga_session_id'
+                        )[0]?.value?.int_value
+                      : null
                   )
                 : null,
               user_pseudo_id: row.user_pseudo_id,
@@ -159,7 +167,15 @@ const process_bq_data = async () => {
               .where(eq(users.user_pseudo_id, user.user_pseudo_id));
 
             if (matchedUserRecords.length === 0) {
-              await db.insert(users).values(user);
+              try {
+                await db.insert(users).values(user);
+              } catch (error) {
+                logProcessing(
+                  `=> user - ${user.user_pseudo_id} could not insert into database, error - ${error}`,
+                  'error'
+                );
+              }
+
               logProcessing(
                 `=> user - ${user.user_pseudo_id} inserted to database`,
                 'success'
@@ -216,7 +232,14 @@ const process_bq_data = async () => {
               session_timestamp: session.session_timestamp
             };
 
-            await db.insert(sessions).values(sessionInsertData);
+            try {
+              await db.insert(sessions).values(sessionInsertData);
+            } catch (error) {
+              logProcessing(
+                `=> user - ${session.session_id} could not insert into database, error - ${error}`,
+                'error'
+              );
+            }
 
             logProcessing(
               `=> session - ${session.session_id} inserted successfully`,
@@ -243,10 +266,17 @@ const process_bq_data = async () => {
             }
 
             if (Object.keys(updates).length > 0) {
-              await db
-                .update(users)
-                .set(updates)
-                .where(eq(users.user_pseudo_id, session.user_pseudo_id));
+              try {
+                await db
+                  .update(users)
+                  .set(updates)
+                  .where(eq(users.user_pseudo_id, session.user_pseudo_id));
+              } catch (error) {
+                logProcessing(
+                  `=> user - ${session.user_pseudo_id} could not updated, error - ${error}`,
+                  'error'
+                );
+              }
 
               logProcessing(
                 `=> user ${session.user_pseudo_id} record updated with new platform/country`,
