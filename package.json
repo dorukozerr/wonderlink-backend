@@ -9,11 +9,10 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "lint": "eslint .",
+    "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
     "migrate": "yarn && yarn build && node dist/scripts/migrate.js",
-    "process-bq-data": "yarn && yarn build && node --expose-gc dist/scripts/process_bq_data.js",
-    "test-gc": "yarn && yarn build && node --expose-gc dist/scripts/test.js"
+    "process-bq-data": "yarn && yarn build && node --expose-gc dist/scripts/process_bq_data.js"
   },
   "dependencies": {
     "@google-cloud/bigquery": "^7.9.1",

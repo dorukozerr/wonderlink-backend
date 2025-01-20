@@ -5,7 +5,8 @@ import pluginPrettier from 'eslint-plugin-prettier';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
-  { files: ['./src/*.ts'] },
+  { ignores: ['**/dist/**', '**/node_modules/**'] },
+  { files: ['./src/**/*.ts'] },
   { languageOptions: { globals: globals.node } },
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,

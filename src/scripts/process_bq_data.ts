@@ -99,7 +99,7 @@ const process_bq_data = async () => {
     const processTableData = async (table: Table) => {
       let userPageToken: string | undefined;
 
-      const maxResults = 500;
+      const maxResults = 1000 * 100;
 
       const sessionEvents = [];
 
@@ -112,9 +112,9 @@ const process_bq_data = async () => {
         const userRecords = rows
           .filter((row) => row.event_name === 'first_open')
           .map((row) => ({
-            user_pseudo_id: row.user_pseudo_id,
-            install_date: row.event_date,
-            install_timestamp: row.user_properties
+            user_pseudo_id: row?.user_pseudo_id,
+            install_date: row?.event_date,
+            install_timestamp: row?.user_properties
               ? row.user_properties.filter(
                   (prop: { key: string }) => prop.key === 'first_open_time'
                 )[0]?.value
@@ -123,15 +123,15 @@ const process_bq_data = async () => {
                   )[0].value?.int_value
                 : null
               : null,
-            platform: row.platform,
-            country: row.geo.country
+            platform: row?.platform,
+            country: row?.geo?.country
           }));
 
         sessionEvents.push(
           ...rows
             .filter((row) => row.event_name === 'session_start')
             .map((row) => ({
-              session_id: row.event_params
+              session_id: row?.event_params
                 ? String(
                     row.event_params.filter(
                       (param: { key: string }) => param.key === 'ga_session_id'
@@ -143,11 +143,11 @@ const process_bq_data = async () => {
                       : null
                   )
                 : null,
-              user_pseudo_id: row.user_pseudo_id,
-              session_date: row.event_date,
-              session_timestamp: row.event_timestamp,
-              country: row.geo.country,
-              platform: row.platform
+              user_pseudo_id: row?.user_pseudo_id,
+              session_date: row?.event_date,
+              session_timestamp: row?.event_timestamp,
+              country: row?.geo?.country,
+              platform: row?.platform
             }))
         );
 
@@ -177,7 +177,7 @@ const process_bq_data = async () => {
               }
 
               logProcessing(
-                `=> user - ${user.user_pseudo_id} inserted to database`,
+                `=> user - ${user.user_pseudo_id} inserted to database, table - ${loopIndex}/${filteredTables.slice(72, filteredTables.length).length}`,
                 'success'
               );
             } else {
@@ -242,7 +242,7 @@ const process_bq_data = async () => {
             }
 
             logProcessing(
-              `=> session - ${session.session_id} inserted successfully`,
+              `=> session - ${session.session_id} inserted successfully, table ${loopIndex}/${filteredTables.slice(72, filteredTables.length).length}`,
               'success'
             );
 
@@ -285,7 +285,7 @@ const process_bq_data = async () => {
             }
           } else {
             logProcessing(
-              `=> session - ${session.session_id} exists in database`,
+              `=> session - ${session.session_id} exists in database, table - ${loopIndex}/${filteredTables.slice(72, filteredTables.length).length}`,
               'error'
             );
           }
@@ -293,7 +293,7 @@ const process_bq_data = async () => {
       }
     };
 
-    for (const { tableId } of filteredTables) {
+    for (const { tableId } of filteredTables.slice(72, filteredTables.length)) {
       const beforeMem = process.memoryUsage().heapUsed / 1024 / 1024;
 
       logProcessing(
@@ -310,11 +310,11 @@ const process_bq_data = async () => {
         'debug'
       );
 
-      logProcessing(
-        `=> starting to process table => ${tableId} ${loopIndex}/${filteredTables.length}`
-      );
-
       loopIndex += 1;
+
+      logProcessing(
+        `=> starting to process table - ${tableId} - ${loopIndex}/${filteredTables.slice(72, filteredTables.length).length}`
+      );
 
       if (!tableId) {
         logProcessing('=> tableId is missing from table record', 'error');
