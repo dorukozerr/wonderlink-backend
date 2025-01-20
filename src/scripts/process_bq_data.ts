@@ -321,9 +321,18 @@ const process_bq_data = async () => {
         continue;
       }
 
+      const tableProcessingStart = Date.now();
+
       const table = bq.dataset(BIGQUERY_DATASET_NAME).table(tableId);
 
       await processTableData(table);
+
+      const tableProcessingEnd = Date.now() - tableProcessingStart;
+
+      logProcessing(
+        `=> ${tableId} - Time: ${Math.floor(tableProcessingEnd / 60000)}m ${((tableProcessingEnd % 60000) / 1000).toFixed(1)}s`,
+        'debug'
+      );
     }
   } catch (error) {
     logProcessing(`=> process_bq_data error => ${error}`, 'error');
