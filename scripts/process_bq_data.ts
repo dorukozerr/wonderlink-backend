@@ -54,11 +54,11 @@ const logStyles = {
   debug: ConsoleColors.Magenta
 };
 
-let logOutput = 'Wonderlink BigQuery data processing logs';
+let logOutput = 'Wonderlink BigQuery data processing\n';
 
 const logOperation = (log: string, type: LogType = 'info') => {
   const timestamp = new Date().toISOString();
-  const coloredLog = `${logStyles[type]}[${type.toUpperCase()}] ${log}${ConsoleColors.Reset}`;
+  const coloredLog = `${logStyles[type]}[${type.toUpperCase()}] => ${log}${ConsoleColors.Reset}`;
   const plainLog = `[${timestamp}] [${type.toUpperCase()}] ${log}\n`;
 
   logOutput += plainLog;
@@ -76,7 +76,8 @@ const process_bq_data = async () => {
       .getTables();
 
     logOperation(
-      `=> all available tables fetched, total table count ${tables.length}`
+      `=> all available tables fetched, total table count ${tables.length}`,
+      'success'
     );
     logOperation('=> starting to filtering tables');
 
@@ -87,43 +88,60 @@ const process_bq_data = async () => {
       .map((table) => ({ tableId: table.id }));
 
     logOperation(
-      `=> tables are filtered, total count of event tables ${filteredTables.length}`
+      `=> tables are filtered, total count of event tables ${filteredTables.length}`,
+      'success'
     );
 
-    throw new Error('test');
+    for (const { tableId } of filteredTables.slice(0, 5)) {
+      logOperation(`starting to fetching all data of table => ${tableId}`);
 
-    //  const table = bq
-    //    .dataset(process.env.BIGQUERY_DATASET_NAME ?? '')
-    //    .table(filteredTables[0].tableId ?? '');
+      if (!tableId) {
+        logOperation('tableId is missing from table record', 'error');
 
-    //  const [rows] = await table.getRows();
+        return;
+      }
 
-    //  const userRecords = rows
-    //    .filter((row) => row.event_name === 'first_open')
-    //    .map((row) => ({
-    //      user_pseudo_id: row.user_pseudo_id,
-    //      install_date: row.event_date,
-    //      install_timestamp: Math.floor(
-    //        row.user_properties.filter(
-    //          (prop: { key: string }) => prop.key === 'first_open_time'
-    //        )[0].value.int_value
-    //      ),
-    //      platform: row.platform,
-    //      country: row.geo.country
-    //    }));
+      const table = bq
+        .dataset(process.env.BIGQUERY_DATASET_NAME ?? '')
+        .table(tableId);
 
-    //  const sessionRecords = rows
-    //    .filter((row) => row.event_name === 'session_start')
-    //    .map((row) => ({
-    //      session_id: String(
-    //        row.event_params.filter(
-    //          (param: { key: string }) => param.key === 'ga_session_id'
-    //        )[0].value.int_value
-    //      ),
-    //      user_pseudo_id: row.user_pseudo_id,
-    //      session_date: row.event_date,
-    //      session_timestamp: row.event_timestamp / 1000
-    //    }));
+      const [rows] = await table.getRows();
+
+      logOperation(`=> table => ${tableId} data fetched`, 'success');
+      logOperation(`starting to filtering events data of table => ${tableId}`);
+
+      const userRecords = rows
+        .filter((row) => row.event_name === 'first_open')
+        .map((row) => ({
+          user_pseudo_id: row.user_pseudo_id,
+          install_date: row.event_date,
+          install_timestamp: Math.floor(
+            row.user_properties.filter(
+              (prop: { key: string }) => prop.key === 'first_open_time'
+            )[0].value.int_value
+          ),
+          platform: row.platform,
+          country: row.geo.country
+        }));
+
+      const sessionRecords = rows
+        .filter((row) => row.event_name === 'session_start')
+        .map((row) => ({
+          session_id: String(
+            row.event_params.filter(
+              (param: { key: string }) => param.key === 'ga_session_id'
+            )[0].value.int_value
+          ),
+          user_pseudo_id: row.user_pseudo_id,
+          session_date: row.event_date,
+          session_timestamp: row.event_timestamp / 1000
+        }));
+
+      logOperation(
+        `table => ${tableId} data filtered, extracted user records ${userRecords.length}, extracted sessionRecords ${sessionRecords.length}`,
+        'success'
+      );
+    }
   } catch (error) {
     logOperation(`process_bq_data error => ${error}`, 'error');
   } finally {
