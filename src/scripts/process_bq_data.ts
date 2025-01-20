@@ -96,11 +96,10 @@ const process_bq_data = async () => {
 
     let loopIndex = 0;
 
-    const processTableData = async (table: Table) => {
+    const processTableData = async (table: Table, tableId: string) => {
       let userPageToken: string | undefined;
-
-      const maxResults = 1000 * 100;
-
+      let processedRows = 0;
+      const maxResults = 1000 * 1000;
       const sessionEvents = [];
 
       do {
@@ -108,6 +107,8 @@ const process_bq_data = async () => {
           pageToken: userPageToken,
           maxResults
         });
+
+        processedRows += rows.length;
 
         const userRecords = rows
           .filter((row) => row.event_name === 'first_open')
@@ -291,6 +292,11 @@ const process_bq_data = async () => {
           }
         }
       }
+
+      logProcessing(
+        `=> table - ${tableId}, total rows processed - ${processedRows.toLocaleString('tr-TR')}`,
+        'debug'
+      );
     };
 
     for (const { tableId } of filteredTables.slice(72, filteredTables.length)) {
@@ -325,7 +331,7 @@ const process_bq_data = async () => {
 
       const table = bq.dataset(BIGQUERY_DATASET_NAME).table(tableId);
 
-      await processTableData(table);
+      await processTableData(table, tableId);
 
       const tableProcessingEnd = Date.now() - tableProcessingStart;
 
