@@ -96,18 +96,14 @@ const process_bq_data = async () => {
 
     let loopIndex = 1;
 
-    const processTableData = async (table: Table, tableId: string) => {
+    const processTableData = async (table: Table) => {
       let userPageToken: string | undefined;
-      let sessionsPageToken: string | undefined;
+      let sessionPageToken: string | undefined;
 
-      const maxResults = 5000;
-      let usersRecordBatch = 1;
-      let sessionsRecordBatch = 1;
+      const maxResults = 500;
 
       do {
         const [rows, metadata] = await table.getRows({
-          selectedFields:
-            'event_name,user_pseudo_id,user_properties,event_date,platform,geo',
           pageToken: userPageToken,
           maxResults
         });
@@ -117,58 +113,68 @@ const process_bq_data = async () => {
           .map((row) => ({
             user_pseudo_id: row.user_pseudo_id,
             install_date: row.event_date,
-            install_timestamp: row.user_properties.filter(
-              (prop: { key: string }) => prop.key === 'first_open_time'
-            )[0].value.int_value,
+            install_timestamp: row.user_properties
+              ? row.user_properties.filter(
+                  (prop: { key: string }) => prop.key === 'first_open_time'
+                )[0].value.int_value
+              : null,
             platform: row.platform,
             country: row.geo.country
           }));
 
-        for (const user of userRecords) {
-          const matchedUserRecords = await db
-            .select()
-            .from(users)
-            .where(eq(users.user_pseudo_id, user.user_pseudo_id));
+        if (userRecords.length > 0) {
+          for (const user of userRecords) {
+            if (!user.install_timestamp) {
+              logProcessing(
+                'install timestamp is null for this user reecord moving on',
+                'error'
+              );
+              continue;
+            }
 
-          if (matchedUserRecords.length === 0) {
-            await db.insert(users).values(user);
-            logProcessing(
-              `=> user - ${user.user_pseudo_id} inserted to database`,
-              'success'
-            );
-          } else {
-            logProcessing(
-              `=> user - ${user.user_pseudo_id} exists in database, moving on to next user`,
-              'error'
-            );
+            const matchedUserRecords = await db
+              .select()
+              .from(users)
+              .where(eq(users.user_pseudo_id, user.user_pseudo_id));
+
+            if (matchedUserRecords.length === 0) {
+              await db.insert(users).values(user);
+              logProcessing(
+                `=> user - ${user.user_pseudo_id} inserted to database`,
+                'success'
+              );
+            } else {
+              logProcessing(
+                `=> user - ${user.user_pseudo_id} exists in database, moving on to next user`,
+                'error'
+              );
+            }
           }
         }
 
-        userPageToken = metadata?.pageToken;
-
-        logProcessing(
-          `=> usersRecords batch ${usersRecordBatch} table => ${tableId} `
-        );
-
-        usersRecordBatch += 1;
+        userPageToken = metadata
+          ? metadata.pageToken
+            ? metadata?.pageToken
+            : undefined
+          : undefined;
       } while (userPageToken);
 
       do {
         const [rows, metadata] = await table.getRows({
-          selectedFields:
-            'event_name,user_pseudo_id,event_date,platform,geo,event_params,event_timestamp',
-          pageToken: sessionsPageToken,
+          pageToken: sessionPageToken,
           maxResults
         });
 
         const sessionRecords = rows
           .filter((row) => row.event_name === 'session_start')
           .map((row) => ({
-            session_id: String(
-              row.event_params.filter(
-                (param: { key: string }) => param.key === 'ga_session_id'
-              )[0].value.int_value
-            ),
+            session_id: row.event_params
+              ? String(
+                  row.event_params.filter(
+                    (param: { key: string }) => param.key === 'ga_session_id'
+                  )[0].value.int_value
+                )
+              : null,
             user_pseudo_id: row.user_pseudo_id,
             session_date: row.event_date,
             session_timestamp: row.event_timestamp,
@@ -176,86 +182,94 @@ const process_bq_data = async () => {
             platform: row.platform
           }));
 
-        for (const session of sessionRecords) {
-          const matchedSessionRecord = await db
-            .select()
-            .from(sessions)
-            .where(eq(sessions.session_id, session.session_id));
-
-          const userRecord = await db
-            .select()
-            .from(users)
-            .where(eq(users.user_pseudo_id, session.user_pseudo_id));
-
-          if (userRecord.length === 0) {
-            logProcessing(
-              `=> user - ${session.user_pseudo_id} does not exist in users table but has a session record skipping the insert operation for this session record`,
-              'error'
-            );
-            continue;
-          }
-
-          if (matchedSessionRecord.length === 0) {
-            const sessionInsertData = {
-              session_id: session.session_id,
-              user_pseudo_id: session.user_pseudo_id,
-              session_date: session.session_date,
-              session_timestamp: session.session_timestamp
-            };
-
-            await db.insert(sessions).values(sessionInsertData);
-
-            logProcessing(
-              `=> session - ${session.session_id} inserted successfully`,
-              'success'
-            );
-
-            const user = userRecord[0];
-            const updates: { platform?: string; country?: string } = {};
-
-            if (session.platform !== user.platform) {
+        if (sessionRecords.length > 0) {
+          for (const session of sessionRecords) {
+            if (!session.session_id) {
               logProcessing(
-                `=> platform mismatch detected for user ${session.user_pseudo_id}. Old: ${user.platform}, New: ${session.platform}`,
-                'warning'
+                'session id is null for this session reecord moving on',
+                'error'
               );
-              updates.platform = session.platform;
+              continue;
             }
 
-            if (session.country !== user.country) {
+            const matchedSessionRecord = await db
+              .select()
+              .from(sessions)
+              .where(eq(sessions.session_id, session.session_id));
+
+            const userRecord = await db
+              .select()
+              .from(users)
+              .where(eq(users.user_pseudo_id, session.user_pseudo_id));
+
+            if (userRecord.length === 0) {
               logProcessing(
-                `=> country mismatch detected for user ${session.user_pseudo_id}. Old: ${user.country}, New: ${session.country}`,
-                'warning'
+                `=> user - ${session.user_pseudo_id} does not exist in users table but has a session record skipping the insert operation for this session record`,
+                'error'
               );
-              updates.country = session.country;
+              continue;
             }
 
-            if (Object.keys(updates).length > 0) {
-              await db
-                .update(users)
-                .set(updates)
-                .where(eq(users.user_pseudo_id, session.user_pseudo_id));
+            if (matchedSessionRecord.length === 0) {
+              const sessionInsertData = {
+                session_id: session.session_id,
+                user_pseudo_id: session.user_pseudo_id,
+                session_date: session.session_date,
+                session_timestamp: session.session_timestamp
+              };
+
+              await db.insert(sessions).values(sessionInsertData);
 
               logProcessing(
-                `=> user ${session.user_pseudo_id} record updated with new platform/country`,
+                `=> session - ${session.session_id} inserted successfully`,
                 'success'
               );
+
+              const user = userRecord[0];
+              const updates: { platform?: string; country?: string } = {};
+
+              if (session.platform !== user.platform) {
+                logProcessing(
+                  `=> platform mismatch detected for user ${session.user_pseudo_id}. Old: ${user.platform}, New: ${session.platform}`,
+                  'warning'
+                );
+                updates.platform = session.platform;
+              }
+
+              if (session.country !== user.country) {
+                logProcessing(
+                  `=> country mismatch detected for user ${session.user_pseudo_id}. Old: ${user.country}, New: ${session.country}`,
+                  'warning'
+                );
+                updates.country = session.country;
+              }
+
+              if (Object.keys(updates).length > 0) {
+                await db
+                  .update(users)
+                  .set(updates)
+                  .where(eq(users.user_pseudo_id, session.user_pseudo_id));
+
+                logProcessing(
+                  `=> user ${session.user_pseudo_id} record updated with new platform/country`,
+                  'success'
+                );
+              }
+            } else {
+              logProcessing(
+                `=> session - ${session.session_id} exists in database`,
+                'error'
+              );
             }
-          } else {
-            logProcessing(
-              `=> session - ${session.session_id} exists in database`,
-              'error'
-            );
           }
         }
 
-        sessionsPageToken = metadata?.pageToken;
-
-        logProcessing(
-          `=> sessionsRecordBatch batch ${sessionsRecordBatch} table => ${tableId} `
-        );
-
-        sessionsRecordBatch += 1;
-      } while (sessionsPageToken);
+        sessionPageToken = metadata
+          ? metadata.pageToken
+            ? metadata.pageToken
+            : undefined
+          : undefined;
+      } while (sessionPageToken);
     };
 
     for (const { tableId } of filteredTables) {
@@ -286,11 +300,12 @@ const process_bq_data = async () => {
 
       const table = bq.dataset(BIGQUERY_DATASET_NAME).table(tableId);
 
-      await processTableData(table, tableId);
+      await processTableData(table);
     }
   } catch (error) {
     logProcessing(`=> process_bq_data error => ${error}`, 'error');
   } finally {
+    logProcessing('Sucessfully processed all data', 'success');
     logFile.end();
   }
 };
