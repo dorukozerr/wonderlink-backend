@@ -93,7 +93,7 @@ const process_bq_data = async () => {
       'success'
     );
 
-    for (const { tableId } of filteredTables.slice(0, 2)) {
+    for (const { tableId } of filteredTables) {
       logProcessing(`=> starting to fetching all data of table => ${tableId}`);
 
       if (!tableId) {
