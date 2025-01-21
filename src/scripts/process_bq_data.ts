@@ -102,6 +102,22 @@ const process_bq_data = async () => {
       const maxResults = 1000 * 1000;
       const sessionEvents = [];
 
+      const beforeMem = process.memoryUsage().heapUsed / 1024 / 1024;
+
+      logProcessing(
+        `Memory usage before GC: ${beforeMem.toFixed(2)} MB`,
+        'debug'
+      );
+
+      if (gc) gc();
+
+      const afterMem = process.memoryUsage().heapUsed / 1024 / 1024;
+
+      logProcessing(
+        `Memory usage after GC: ${afterMem.toFixed(2)} MB`,
+        'debug'
+      );
+
       do {
         const [rows, metadata] = await table.getRows({
           pageToken: userPageToken,
@@ -183,7 +199,7 @@ const process_bq_data = async () => {
               }
 
               logProcessing(
-                `=> user - ${user.user_pseudo_id} inserted to database, table - ${loopIndex}/${filteredTables.slice(72, filteredTables.length).length}`,
+                `=> user - ${user.user_pseudo_id} inserted to database, table - ${loopIndex}/${filteredTables.length}`,
                 'success'
               );
             } else {
@@ -248,7 +264,7 @@ const process_bq_data = async () => {
             }
 
             logProcessing(
-              `=> session - ${session.session_id} inserted successfully, table ${loopIndex}/${filteredTables.slice(72, filteredTables.length).length}`,
+              `=> session - ${session.session_id} inserted successfully, table ${loopIndex}/${filteredTables.length}`,
               'success'
             );
 
@@ -291,7 +307,7 @@ const process_bq_data = async () => {
             }
           } else {
             logProcessing(
-              `=> session - ${session.session_id} exists in database, table - ${loopIndex}/${filteredTables.slice(72, filteredTables.length).length}`,
+              `=> session - ${session.session_id} exists in database, table - ${loopIndex}/${filteredTables.length}`,
               'error'
             );
           }
@@ -304,7 +320,7 @@ const process_bq_data = async () => {
       );
     };
 
-    for (const { tableId } of filteredTables.slice(72, filteredTables.length)) {
+    for (const { tableId } of filteredTables) {
       const beforeMem = process.memoryUsage().heapUsed / 1024 / 1024;
 
       logProcessing(
@@ -324,7 +340,7 @@ const process_bq_data = async () => {
       loopIndex += 1;
 
       logProcessing(
-        `=> starting to process table - ${tableId} - ${loopIndex}/${filteredTables.slice(72, filteredTables.length).length}`
+        `=> starting to process table - ${tableId} - ${loopIndex}/${filteredTables.length}`
       );
 
       if (!tableId) {
