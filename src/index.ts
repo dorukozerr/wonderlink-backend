@@ -2,13 +2,17 @@ import { config } from 'dotenv';
 
 config();
 
+import cors from 'cors';
 import { createHTTPServer } from '@trpc/server/adapters/standalone';
 import { appRouter } from './routers/_app';
 import { createContext } from './trpc';
 
 const server = createHTTPServer({
   router: appRouter,
-  createContext
+  createContext,
+  middleware: cors({
+    origin: ['http://localhost:5173']
+  })
 });
 
 const HTTP_SERVER_PORT = process.env.HTTP_SERVER_PORT;

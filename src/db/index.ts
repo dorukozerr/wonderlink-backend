@@ -7,12 +7,14 @@ import { Pool } from 'pg';
 
 const BIGQUERY_PROJECT_ID = process.env.BIGQUERY_PROJECT_ID;
 const BIGQUERY_CREDENTIALS_JSON = process.env.BIGQUERY_CREDENTIALS_JSON;
-const POSTGRESQL_DATABASE_URL = process.env.POSTGRESQL_DATABASE_URL;
+const POSTGRESQL_DATABASE_NAME = process.env.POSTGRESQL_DATABASE_NAME;
+const POSTGRESQL_DATABASE_PASSWORD = process.env.POSTGRESQL_DATABASE_PASSWORD;
 
 if (
   !BIGQUERY_PROJECT_ID ||
   !BIGQUERY_CREDENTIALS_JSON ||
-  !POSTGRESQL_DATABASE_URL
+  !POSTGRESQL_DATABASE_NAME ||
+  !POSTGRESQL_DATABASE_PASSWORD
 ) {
   throw new Error('Missing env vars detected');
 }
@@ -23,7 +25,8 @@ const bq = new BigQuery({
 });
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
+  database: POSTGRESQL_DATABASE_NAME,
+  password: POSTGRESQL_DATABASE_PASSWORD
 });
 
 const db = drizzle(pool);
