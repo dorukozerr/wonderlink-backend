@@ -1,5 +1,0 @@
-I just wanted to jot down things while I develop this application
-
-1. When I fetch all tables most of them are like this -> events_<date> but there are some tables with this naming too -> events_intraday_<date>. I'll ignore the intraday tables for now whhen generating processing raw data.
-2. When I fetched the data and loop ever row there are some logic mismatches. For example row.event_timestamp is microseconds timestamp and needs to divided 1000 before using in date constructor. But install_timestamp that exists in row.user_properties array is normal is microseconds timestamp. Its just a mismatch in data structure and I want it to note this down.
-3. Case Study pdf instructions says I should store dates in yyyy-mm-dd format is it 2024-12-01 or 20241201 idk. Will store them as 20241201 can change it later if needed.
