@@ -19,22 +19,38 @@ export const analyticsRouter = router({
     )
     .query(async ({ input: { date, platforms, countries } }) => {
       const dateFilter = sql.empty();
+
       if (date.from) {
         dateFilter.append(sql` AND u.install_date >= ${date.from}`);
       }
+
       if (date.to) {
         dateFilter.append(sql` AND u.install_date <= ${date.to}`);
       }
 
-      const platformFilter =
+      const platformArray =
         platforms.length > 0
-          ? sql` AND u.platform = ANY(${platforms})`
-          : sql.empty();
+          ? sql`ARRAY[${sql.join(
+              platforms.map((p) => sql`${p}`),
+              sql`, `
+            )}]`
+          : null;
 
-      const countryFilter =
+      const countryArray =
         countries.length > 0
-          ? sql` AND u.country = ANY(${countries})`
-          : sql.empty();
+          ? sql`ARRAY[${sql.join(
+              countries.map((c) => sql`${c}`),
+              sql`, `
+            )}]`
+          : null;
+
+      const platformFilter = platformArray
+        ? sql` AND u.platform = ANY(${platformArray})`
+        : sql.empty();
+
+      const countryFilter = countryArray
+        ? sql` AND u.country = ANY(${countryArray})`
+        : sql.empty();
 
       const result = await db.execute(sql`
         WITH base_users AS (
@@ -111,6 +127,11 @@ export const analyticsRouter = router({
         FROM user_retention
       `);
 
-      return result.rows[0].data;
+      return result.rows[0].data as {
+        id: string;
+        value: number;
+        label: string;
+        ratio?: number;
+      }[];
     })
 });
