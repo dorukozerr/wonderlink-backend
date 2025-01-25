@@ -11,7 +11,7 @@ const server = createHTTPServer({
   router: appRouter,
   createContext,
   middleware: cors({
-    origin: ['http://localhost:5173']
+    origin: ['http://wonderlink.waifui.com']
   })
 });
 
